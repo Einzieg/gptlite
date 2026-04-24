@@ -1,0 +1,28 @@
+services:
+  gptlite:
+    build: .
+    container_name: gptlite
+    ports:
+      - "3211:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: file:/data/gptlite.db
+      OPENAI_BASE_URL: http://new-api:3000/v1
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      DEFAULT_CHAT_MODEL: ${DEFAULT_CHAT_MODEL:-gpt-5.4-mini}
+      DEFAULT_THINKING_MODEL: ${DEFAULT_THINKING_MODEL:-gpt-5.4}
+      DEFAULT_IMAGE_MODEL: ${DEFAULT_IMAGE_MODEL:-gpt-image-2}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    volumes:
+      - ./data:/data
+    restart: always
+    networks:
+      - new-api-network
+
+networks:
+  new-api-network:
+    external: true
+    name: new-api_default
