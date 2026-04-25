@@ -521,7 +521,7 @@ function ChatShell({ user }: { user: User }) {
         />
       ) : null}
 
-      <section className="content-area">
+      <section className={mode === "image" ? "content-area image-content-area" : "content-area"}>
         {visibleMessages.length === 0 ? (
           mode === "image" ? <ImageEmpty busy={imageBusy} /> : <Welcome />
         ) : (
@@ -603,7 +603,6 @@ function ChatShell({ user }: { user: User }) {
             >
               <ImageIcon size={17} />
               <span>图片</span>
-              <X size={14} />
             </button>
             <button
               className={imageOptionsOpen ? "image-auto-pill active" : "image-auto-pill"}

@@ -131,6 +131,10 @@ button {
   scrollbar-width: thin;
 }
 
+.image-content-area {
+  padding-bottom: calc(252px + env(safe-area-inset-bottom));
+}
+
 .welcome {
   min-height: calc(100dvh - 210px);
   display: flex;
