@@ -6,15 +6,14 @@ import {
   Bot,
   Check,
   ChevronDown,
+  ChevronRight,
   CircleStop,
   Copy,
   Download,
-  FileText,
   ImageIcon,
-  Lightbulb,
   LogOut,
   Menu,
-  MessageSquare,
+  MoreHorizontal,
   Pencil,
   Plus,
   RotateCcw,
@@ -22,8 +21,6 @@ import {
   Send,
   Settings,
   Shield,
-  SlidersHorizontal,
-  Sparkles,
   SquarePen,
   Trash2,
   UserPlus,
@@ -91,17 +88,10 @@ const DEFAULT_IMAGE_PARAMS: ImageParams = {
 };
 
 const modeLabels: Record<ConversationMode, string> = {
-  chat: "Chat",
+  chat: "ChatGPT",
   thinking: "Thinking",
   image: "Image"
 };
-
-const promptChips = [
-  { label: "创建图片", icon: ImageIcon, mode: "image" as ConversationMode, prompt: "一张极简风格的移动端聊天应用界面" },
-  { label: "构思", icon: Lightbulb, mode: "chat" as ConversationMode, prompt: "帮我构思一个轻量 AI 聊天应用的首页交互" },
-  { label: "给我惊喜", icon: Sparkles, mode: "chat" as ConversationMode, prompt: "给我一个今天可以实践的有趣想法" },
-  { label: "总结文本", icon: FileText, mode: "chat" as ConversationMode, prompt: "请总结下面这段文本：" }
-];
 
 export default function App() {
   const meQuery = useQuery({ queryKey: ["me"], queryFn: api.me });
@@ -448,12 +438,6 @@ function ChatShell({ user }: { user: User }) {
     setReferenceImages((current) => current.filter((image) => image.id !== id));
   }
 
-  function applyPrompt(prompt: string, nextMode: ConversationMode) {
-    setMode(nextMode);
-    setDraft(prompt);
-    setModelOpen(false);
-  }
-
   async function copyText(text: string) {
     await navigator.clipboard.writeText(text);
     setNotice("已复制");
@@ -492,16 +476,23 @@ function ChatShell({ user }: { user: User }) {
   return (
     <main className="app-shell">
       <header className="top-bar">
-        <button className="icon-button" type="button" title="菜单" onClick={() => setDrawerOpen(true)}>
-          <Menu size={22} />
-        </button>
-        <button className="mode-pill" type="button" onClick={() => setModelOpen((open) => !open)}>
-          <span>{modeLabels[mode]}</span>
-          <ChevronDown size={16} />
-        </button>
-        <button className="icon-button" type="button" title="新聊天" onClick={startNewConversation}>
-          <SquarePen size={21} />
-        </button>
+        <div className="top-left">
+          <button className="icon-button naked" type="button" title="菜单" onClick={() => setDrawerOpen(true)}>
+            <Menu size={22} />
+          </button>
+          <button className="mode-pill" type="button" onClick={() => setModelOpen((open) => !open)}>
+            <span>{modeLabels[mode]}</span>
+            <ChevronDown size={16} />
+          </button>
+        </div>
+        <div className="top-actions">
+          <button className="icon-button naked" type="button" title="用户" onClick={() => setDrawerOpen(true)}>
+            <UserPlus size={21} />
+          </button>
+          <button className="icon-button naked" type="button" title="新聊天" onClick={startNewConversation}>
+            <SquarePen size={21} />
+          </button>
+        </div>
       </header>
 
       {modelOpen ? (
@@ -517,7 +508,7 @@ function ChatShell({ user }: { user: User }) {
 
       <section className="content-area">
         {visibleMessages.length === 0 ? (
-          mode === "image" ? <ImageEmpty busy={imageBusy} /> : <Welcome onPrompt={applyPrompt} />
+          mode === "image" ? <ImageEmpty busy={imageBusy} /> : <Welcome />
         ) : (
           <>
             <MessageList
@@ -580,15 +571,31 @@ function ChatShell({ user }: { user: User }) {
         {mode === "image" ? (
           <>
             <button
-              className={imageOptionsOpen ? "composer-tool active" : "composer-tool"}
+              className="composer-tool image-upload-trigger"
+              type="button"
+              title="上传参考图"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Plus size={21} />
+            </button>
+            <button
+              className={referenceImages.length > 0 ? "image-mode-chip active" : "image-mode-chip"}
+              type="button"
+              title="上传参考图"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <ImageIcon size={17} />
+              <span>图片</span>
+              <X size={14} />
+            </button>
+            <button
+              className={imageOptionsOpen ? "image-auto-pill active" : "image-auto-pill"}
               type="button"
               title="生图参数"
               onClick={() => setImageOptionsOpen((open) => !open)}
             >
-              <SlidersHorizontal size={20} />
-            </button>
-            <button className="composer-tool" type="button" title="上传参考图" onClick={() => fileInputRef.current?.click()}>
-              <ImageIcon size={20} />
+              <span>自动</span>
+              <ChevronDown size={15} />
             </button>
           </>
         ) : (
@@ -609,7 +616,7 @@ function ChatShell({ user }: { user: User }) {
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
           rows={1}
-          placeholder={mode === "image" ? "描述你想生成的图片" : `问问 Einzieg`}
+          placeholder={mode === "image" ? "描述或编辑图片" : "你好"}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
@@ -663,21 +670,10 @@ function ChatShell({ user }: { user: User }) {
   );
 }
 
-function Welcome({ onPrompt }: { onPrompt: (prompt: string, mode: ConversationMode) => void }) {
+function Welcome() {
   return (
     <div className="welcome">
-      <h1>有什么可以帮忙的？</h1>
-      <div className="prompt-grid">
-        {promptChips.map((chip) => {
-          const Icon = chip.icon;
-          return (
-            <button key={chip.label} type="button" onClick={() => onPrompt(chip.prompt, chip.mode)}>
-              <Icon size={17} />
-              <span>{chip.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      <h1>你在忙什么？</h1>
     </div>
   );
 }
@@ -1024,57 +1020,86 @@ function Drawer(props: {
   onLogout: () => void;
   onAdmin: () => void;
 }) {
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+
   if (!props.open) {
     return null;
   }
 
   return (
-    <div className="drawer-backdrop">
-      <aside className="drawer">
+    <div className="drawer-backdrop" onClick={props.onClose}>
+      <aside className="drawer" onClick={(event) => event.stopPropagation()}>
         <div className="drawer-top">
-          <button className="icon-button" type="button" title="关闭" onClick={props.onClose}>
-            <X size={21} />
-          </button>
-          <button className="drawer-new" type="button" onClick={props.onNew}>
-            <SquarePen size={17} />
-            <span>新聊天</span>
+          <span className="drawer-logo">
+            <Bot size={21} />
+          </span>
+          <button className="drawer-close" type="button" title="关闭" onClick={props.onClose}>
+            <X size={20} />
           </button>
         </div>
+        <button className="drawer-new" type="button" onClick={props.onNew}>
+          <SquarePen size={18} />
+          <span>新聊天</span>
+        </button>
         <label className="search-box">
-          <Search size={16} />
-          <input value={props.search} onChange={(event) => props.onSearch(event.target.value)} placeholder="搜索会话" />
+          <Search size={18} />
+          <input value={props.search} onChange={(event) => props.onSearch(event.target.value)} placeholder="搜索聊天" />
         </label>
+        <div className="conversation-section-title">最近</div>
         <div className="conversation-list">
           {props.conversations.map((conversation) => (
             <div key={conversation.id} className={conversation.id === props.activeConversationId ? "active" : ""}>
-              <button type="button" onClick={() => props.onSelect(conversation)}>
-                <MessageSquare size={15} />
+              <button className="conversation-main" type="button" onClick={() => props.onSelect(conversation)}>
                 <span>{conversation.title}</span>
               </button>
-              <button type="button" title="重命名" onClick={() => props.onRename(conversation.id, conversation.title)}>
-                <Pencil size={13} />
-              </button>
-              <button type="button" title="删除" onClick={() => props.onDelete(conversation.id)}>
-                <Trash2 size={13} />
+              <button
+                className="conversation-more"
+                type="button"
+                title="重命名"
+                onClick={() => props.onRename(conversation.id, conversation.title)}
+              >
+                <MoreHorizontal size={17} />
               </button>
             </div>
           ))}
         </div>
         <div className="drawer-footer">
-          <div className="user-chip">
-            <span>{props.user.username.slice(0, 1).toUpperCase()}</span>
-            <strong>{props.user.username}</strong>
-          </div>
-          {props.user.role === "admin" ? (
-            <button type="button" onClick={props.onAdmin}>
-              <Settings size={16} />
-              <span>管理</span>
+          {userMenuOpen ? (
+            <div className="user-panel">
+              <button className="user-panel-account" type="button" onClick={() => setUserMenuOpen(false)}>
+                <span className="avatar">{props.user.username.slice(0, 2).toUpperCase()}</span>
+                <span>
+                  <strong>{props.user.username}</strong>
+                  <small>Pro</small>
+                </span>
+                <ChevronRight size={18} />
+              </button>
+              {props.user.role === "admin" ? (
+                <button type="button" onClick={props.onAdmin}>
+                  <Settings size={17} />
+                  <span>设置</span>
+                </button>
+              ) : null}
+              <button type="button" onClick={props.onLogout}>
+                <LogOut size={17} />
+                <span>退出登录</span>
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          ) : null}
+          <button className="user-chip" type="button" onClick={() => setUserMenuOpen((open) => !open)}>
+            <span className="avatar">{props.user.username.slice(0, 2).toUpperCase()}</span>
+            <span>
+              <strong>{props.user.username}</strong>
+              <small>Pro</small>
+            </span>
+          </button>
+          {props.user.role === "admin" && !userMenuOpen ? (
+            <button className="drawer-admin-shortcut" type="button" onClick={props.onAdmin}>
+              <Settings size={17} />
+              <span>设置</span>
             </button>
           ) : null}
-          <button type="button" onClick={props.onLogout}>
-            <LogOut size={16} />
-            <span>登出</span>
-          </button>
         </div>
       </aside>
     </div>
