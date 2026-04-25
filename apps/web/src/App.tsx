@@ -1231,7 +1231,7 @@ function firstDownloadableImage(payload: ImageMessagePayload) {
 
   const extension = image.extension ?? payload.outputFormat ?? "png";
   return {
-    src: image.src,
+    src: `/api/images/${encodeURIComponent(image.id)}/download`,
     filename: `${image.id}.${extension}`
   };
 }

@@ -139,6 +139,44 @@ export async function imageRoutes(app: FastifyInstance) {
     return db.select().from(images).where(eq(images.userId, user.id)).orderBy(desc(images.createdAt)).all();
   });
 
+  app.get("/api/images/:id/download", async (request, reply) => {
+    const user = await requireUser(request, reply);
+    if (!user) {
+      return;
+    }
+
+    const { id } = request.params as { id: string };
+    const image = db.select().from(images).where(and(eq(images.id, id), eq(images.userId, user.id))).get();
+    if (!image) {
+      return notFound(reply, "图片不存在");
+    }
+
+    if (image.base64) {
+      const decoded = decodeBase64Image(image.base64);
+      const filename = downloadFilename(image.id, extensionForMime(decoded.mimeType));
+      return reply
+        .header("Content-Type", decoded.mimeType)
+        .header("Content-Disposition", contentDisposition(filename))
+        .send(decoded.bytes);
+    }
+
+    if (!image.url) {
+      return notFound(reply, "图片不存在");
+    }
+
+    const response = await fetch(image.url);
+    if (!response.ok) {
+      throw new Error(`Image download failed: ${response.status}`);
+    }
+
+    const contentType = response.headers.get("content-type")?.split(";")[0].trim() || mimeTypeFromUrl(image.url);
+    const filename = downloadFilename(image.id, extensionForMime(contentType));
+    return reply
+      .header("Content-Type", contentType)
+      .header("Content-Disposition", contentDisposition(filename))
+      .send(Buffer.from(await response.arrayBuffer()));
+  });
+
   app.get("/api/images/:id", async (request, reply) => {
     const user = await requireUser(request, reply);
     if (!user) {
@@ -346,6 +384,37 @@ function mimeTypeForFormat(format: string) {
     return "image/webp";
   }
   return "image/png";
+}
+
+function decodeBase64Image(value: string) {
+  const match = value.match(/^data:([^;]+);base64,(.+)$/);
+  const mimeType = match?.[1] || "image/png";
+  const base64 = match?.[2] || value;
+  return { mimeType, bytes: Buffer.from(base64, "base64") };
+}
+
+function mimeTypeFromUrl(url: string) {
+  let pathname = "";
+  try {
+    pathname = new URL(url).pathname.toLowerCase();
+  } catch {
+    return "image/png";
+  }
+  if (pathname.endsWith(".jpg") || pathname.endsWith(".jpeg")) {
+    return "image/jpeg";
+  }
+  if (pathname.endsWith(".webp")) {
+    return "image/webp";
+  }
+  return "image/png";
+}
+
+function downloadFilename(id: string, extension: string) {
+  return `${id}.${extension}`;
+}
+
+function contentDisposition(filename: string) {
+  return `attachment; filename="${filename.replace(/["\\]/g, "")}"`;
 }
 
 function normalizeReferenceImages(value: unknown) {
