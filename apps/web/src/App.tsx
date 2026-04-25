@@ -733,6 +733,7 @@ function MessageList(props: {
       {props.messages.map((message) => {
         const imagePayload = parseImageMessage(message.content);
         const copyContent = imagePayload?.prompt ?? message.content;
+        const downloadImage = imagePayload ? firstDownloadableImage(imagePayload) : null;
 
         return (
           <article key={message.id} className={`message-row ${message.role}`}>
@@ -764,6 +765,11 @@ function MessageList(props: {
               <button type="button" title="删除" onClick={() => props.onDelete(message)}>
                 <Trash2 size={14} />
               </button>
+              {downloadImage ? (
+                <a className="message-action-link" href={downloadImage.src} download={downloadImage.filename} title="下载图片">
+                  <Download size={14} />
+                </a>
+              ) : null}
             </div>
           </article>
         );
@@ -904,14 +910,6 @@ function ImageResult(props: {
             >
               <img src={image.src} alt={props.payload.prompt} />
             </button>
-            <a
-              className="image-download-button generated-image-download"
-              href={image.src}
-              download={`${image.id}.${image.extension ?? props.payload.outputFormat ?? "png"}`}
-              title="下载图片"
-            >
-              <Download size={16} />
-            </a>
           </figure>
         ))}
       </div>
@@ -930,12 +928,7 @@ function ImagePreview({ image, onClose }: { image: PreviewImage | null; onClose:
         <button className="image-preview-close" type="button" title="关闭预览" onClick={onClose}>
           <X size={20} />
         </button>
-        <div className="image-preview-media">
-          <img src={image.src} alt={image.prompt} />
-          <a className="image-download-button" href={image.src} download={`${image.id}.${image.extension ?? "png"}`} title="下载图片">
-            <Download size={17} />
-          </a>
-        </div>
+        <img src={image.src} alt={image.prompt} />
       </section>
     </div>
   );
@@ -1228,6 +1221,19 @@ function appendMessagesToCache(queryClient: QueryClient, conversationId: string,
 
 function compareConversationsByRecency(left: Conversation, right: Conversation) {
   return right.updatedAt - left.updatedAt || right.createdAt - left.createdAt;
+}
+
+function firstDownloadableImage(payload: ImageMessagePayload) {
+  const image = payload.images.map((item) => ({ ...item, src: imageSource(item) })).find((item) => item.src);
+  if (!image) {
+    return null;
+  }
+
+  const extension = image.extension ?? payload.outputFormat ?? "png";
+  return {
+    src: image.src,
+    filename: `${image.id}.${extension}`
+  };
 }
 
 function parseImageMessage(content: string): ImageMessagePayload | null {

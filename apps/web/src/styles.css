@@ -75,6 +75,7 @@ button {
 .composer-tool,
 .send-button,
 .message-actions button,
+.message-actions a,
 .drawer button,
 .admin-panel button,
 .segmented button {
@@ -384,7 +385,8 @@ button {
   opacity: 0.86;
 }
 
-.message-actions button {
+.message-actions button,
+.message-actions a {
   display: grid;
   place-items: center;
   width: 30px;
@@ -392,9 +394,11 @@ button {
   border-radius: var(--radius-pill);
   background: transparent;
   color: var(--muted);
+  text-decoration: none;
 }
 
-.message-actions button:hover {
+.message-actions button:hover,
+.message-actions a:hover {
   background: var(--surface-strong);
   color: var(--text);
 }
@@ -856,7 +860,6 @@ button {
 }
 
 .generated-image-card {
-  position: relative;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -886,37 +889,12 @@ button {
   background: var(--surface-strong);
 }
 
-.generated-image-download {
-  position: absolute;
-  z-index: 1;
-  right: 10px;
-  bottom: 10px;
-}
-
 .image-placeholder {
   display: block;
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
   background: var(--surface-strong);
-}
-
-.image-download-button {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: var(--radius-pill);
-  background: rgba(38, 38, 38, 0.38);
-  color: white;
-  backdrop-filter: blur(8px);
-  transition: background 0.16s ease, transform 0.16s ease;
-}
-
-.image-download-button:hover {
-  background: rgba(38, 38, 38, 0.56);
-  transform: translateY(-1px);
 }
 
 .image-placeholder-text {
@@ -940,12 +918,6 @@ button {
   max-height: 94dvh;
 }
 
-.image-preview-media {
-  position: relative;
-  display: inline-block;
-  line-height: 0;
-}
-
 .image-preview img {
   display: block;
   max-width: 100%;
@@ -953,13 +925,6 @@ button {
   object-fit: contain;
   border-radius: 8px;
   background: #0d0f0e;
-}
-
-.image-preview .image-download-button {
-  position: absolute;
-  z-index: 1;
-  right: 12px;
-  bottom: 12px;
 }
 
 .image-preview-close {
