@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import cookie from "@fastify/cookie";
@@ -19,6 +19,14 @@ const app = Fastify({
 });
 
 await initializeDatabase();
+
+mkdirSync(env.REFERENCE_IMAGE_DIR, { recursive: true });
+await app.register(fastifyStatic, {
+  root: env.REFERENCE_IMAGE_DIR,
+  prefix: env.REFERENCE_IMAGE_PUBLIC_PATH,
+  decorateReply: false,
+  maxAge: "2h"
+});
 
 await app.register(cookie);
 await app.register(authRoutes);

@@ -1,4 +1,6 @@
-import type { FastifyInstance } from "fastify";
+import { mkdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { and, desc, eq } from "drizzle-orm";
 import { requireUser } from "../auth.js";
 import { db, now } from "../db/client.js";
@@ -52,6 +54,7 @@ export async function imageRoutes(app: FastifyInstance) {
     let referenceImages;
     try {
       referenceImages = normalizeReferenceImages(body.referenceImages);
+      referenceImages = await materializeReferenceImages(referenceImages, request);
     } catch (error) {
       return badRequest(reply, error instanceof Error ? error.message : "参考图无效");
     }
@@ -355,8 +358,13 @@ function normalizeReferenceImages(value: unknown) {
     const name = stringBody(record.name, "reference.png").slice(0, 120);
     const type = stringBody(record.type, "image/png");
     const data = typeof record.data === "string" ? record.data : "";
+    const url = typeof record.url === "string" ? record.url.trim() : "";
     const base64 = data.includes(",") ? data.split(",").pop() ?? "" : data;
     const approxBytes = Math.floor((base64.length * 3) / 4);
+
+    if (url) {
+      return { name, type, data, url };
+    }
 
     if (!type.startsWith("image/") || !data || approxBytes > MAX_REFERENCE_IMAGE_BYTES) {
       throw new Error("参考图必须是 12MB 以内的图片");
@@ -364,4 +372,79 @@ function normalizeReferenceImages(value: unknown) {
 
     return { name, type, data };
   });
+}
+
+async function materializeReferenceImages(
+  referenceImages: ReturnType<typeof normalizeReferenceImages>,
+  request: FastifyRequest
+) {
+  if (env.IMAGE_API_PROVIDER !== "grsai" || referenceImages.length === 0) {
+    return referenceImages;
+  }
+
+  const baseUrl = publicBaseUrl(request);
+  if (!baseUrl) {
+    throw new Error("GRSAI 参考图需要配置 PUBLIC_APP_URL 或正确透传 Host");
+  }
+
+  await mkdir(env.REFERENCE_IMAGE_DIR, { recursive: true });
+
+  return Promise.all(
+    referenceImages.map(async (image) => {
+      if (image.url) {
+        return image;
+      }
+
+      const match = image.data.match(/^data:([^;]+);base64,(.+)$/);
+      const mimeType = match?.[1] || image.type || "image/png";
+      const base64 = match?.[2] || image.data;
+      const extension = extensionForMime(mimeType);
+      const filename = `${crypto.randomUUID()}.${extension}`;
+      await writeFile(join(env.REFERENCE_IMAGE_DIR, filename), Buffer.from(base64, "base64"));
+
+      return {
+        ...image,
+        url: `${baseUrl}${publicReferencePath()}${encodeURIComponent(filename)}`
+      };
+    })
+  );
+}
+
+function publicBaseUrl(request: FastifyRequest) {
+  if (env.PUBLIC_APP_URL) {
+    return env.PUBLIC_APP_URL;
+  }
+
+  const forwardedProto = firstHeader(request.headers["x-forwarded-proto"]);
+  const forwardedHost = firstHeader(request.headers["x-forwarded-host"]);
+  const host = forwardedHost || firstHeader(request.headers.host);
+  if (!host) {
+    return "";
+  }
+
+  return `${(forwardedProto || "http").split(",")[0].trim()}://${host.split(",")[0].trim()}`;
+}
+
+function publicReferencePath() {
+  const prefix = env.REFERENCE_IMAGE_PUBLIC_PATH.startsWith("/")
+    ? env.REFERENCE_IMAGE_PUBLIC_PATH
+    : `/${env.REFERENCE_IMAGE_PUBLIC_PATH}`;
+  return prefix.endsWith("/") ? prefix : `${prefix}/`;
+}
+
+function firstHeader(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? "";
+  }
+  return value ?? "";
+}
+
+function extensionForMime(mimeType: string) {
+  if (mimeType.includes("jpeg") || mimeType.includes("jpg")) {
+    return "jpg";
+  }
+  if (mimeType.includes("webp")) {
+    return "webp";
+  }
+  return "png";
 }
