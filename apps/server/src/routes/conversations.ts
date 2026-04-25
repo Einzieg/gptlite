@@ -38,7 +38,12 @@ export async function conversationRoutes(app: FastifyInstance) {
       ? and(eq(conversations.userId, user.id), like(conversations.title, `%${search}%`))
       : eq(conversations.userId, user.id);
 
-    return db.select().from(conversations).where(where).orderBy(desc(conversations.updatedAt)).all();
+    return db
+      .select()
+      .from(conversations)
+      .where(where)
+      .orderBy(desc(conversations.updatedAt), desc(conversations.createdAt))
+      .all();
   });
 
   app.post("/api/conversations", async (request, reply) => {

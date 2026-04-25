@@ -92,6 +92,7 @@ export async function initializeDatabase() {
   `);
 
   synchronizeConfiguredModels();
+  repairConversationTimestamps();
   seedModels();
   backfillImageMessages();
   await seedAdminFromEnv();
@@ -100,14 +101,32 @@ export async function initializeDatabase() {
 function synchronizeConfiguredModels() {
   sqlite.prepare("DELETE FROM models WHERE id LIKE 'gpt-4%'").run();
   sqlite
-    .prepare("UPDATE conversations SET model = @model, updated_at = @updatedAt WHERE mode = 'thinking'")
-    .run({ model: env.DEFAULT_THINKING_MODEL, updatedAt: now() });
+    .prepare("UPDATE conversations SET model = @model WHERE mode = 'thinking' AND model != @model")
+    .run({ model: env.DEFAULT_THINKING_MODEL });
   sqlite
-    .prepare("UPDATE conversations SET model = @model, updated_at = @updatedAt WHERE mode = 'image'")
-    .run({ model: env.DEFAULT_IMAGE_MODEL, updatedAt: now() });
+    .prepare("UPDATE conversations SET model = @model WHERE mode = 'image' AND model != @model")
+    .run({ model: env.DEFAULT_IMAGE_MODEL });
   sqlite
-    .prepare("UPDATE conversations SET model = @model, updated_at = @updatedAt WHERE mode NOT IN ('thinking', 'image')")
-    .run({ model: env.DEFAULT_CHAT_MODEL, updatedAt: now() });
+    .prepare("UPDATE conversations SET model = @model WHERE mode NOT IN ('thinking', 'image') AND model != @model")
+    .run({ model: env.DEFAULT_CHAT_MODEL });
+}
+
+function repairConversationTimestamps() {
+  const key = "conversation_timestamp_repair_v1";
+  const repaired = sqlite.prepare("SELECT 1 FROM settings WHERE key = ?").get(key);
+  if (repaired) {
+    return;
+  }
+
+  sqlite.exec(`
+    UPDATE conversations
+    SET updated_at = max(
+      created_at,
+      coalesce((SELECT max(updated_at) FROM messages WHERE messages.conversation_id = conversations.id), 0),
+      coalesce((SELECT max(created_at) FROM images WHERE images.conversation_id = conversations.id), 0)
+    )
+  `);
+  sqlite.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, String(now()));
 }
 
 function seedModels() {

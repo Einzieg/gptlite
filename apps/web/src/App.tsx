@@ -226,7 +226,11 @@ function ChatShell({ user }: { user: User }) {
   });
 
   const messages = messagesQuery.data ?? [];
-  const currentConversation = conversationsQuery.data?.find((item) => item.id === activeConversationId);
+  const conversations = useMemo(
+    () => [...(conversationsQuery.data ?? [])].sort(compareConversationsByRecency),
+    [conversationsQuery.data]
+  );
+  const currentConversation = conversations.find((item) => item.id === activeConversationId);
 
   useLayoutEffect(() => {
     const textarea = textareaRef.current;
@@ -651,7 +655,7 @@ function ChatShell({ user }: { user: User }) {
       <Drawer
         open={drawerOpen}
         user={user}
-        conversations={conversationsQuery.data ?? []}
+        conversations={conversations}
         activeConversationId={activeConversationId}
         search={search}
         onSearch={setSearch}
@@ -1218,6 +1222,10 @@ function appendMessagesToCache(queryClient: QueryClient, conversationId: string,
     const nextIds = new Set(newMessages.map((message) => message.id));
     return [...current.filter((message) => !nextIds.has(message.id)), ...newMessages];
   });
+}
+
+function compareConversationsByRecency(left: Conversation, right: Conversation) {
+  return right.updatedAt - left.updatedAt || right.createdAt - left.createdAt;
 }
 
 function parseImageMessage(content: string): ImageMessagePayload | null {
