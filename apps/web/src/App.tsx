@@ -890,6 +890,7 @@ function ImageResult(props: {
         {images.map((image) => (
           <figure key={image.id} className="generated-image-card">
             <button
+              className="generated-image-open"
               type="button"
               title="预览图片"
               onClick={() =>
@@ -903,12 +904,14 @@ function ImageResult(props: {
             >
               <img src={image.src} alt={props.payload.prompt} />
             </button>
-            <figcaption>
-              <span>{props.payload.prompt}</span>
-              <a href={image.src} download={`${image.id}.${image.extension ?? props.payload.outputFormat ?? "png"}`} title="下载图片">
-                <Download size={15} />
-              </a>
-            </figcaption>
+            <a
+              className="image-download-button generated-image-download"
+              href={image.src}
+              download={`${image.id}.${image.extension ?? props.payload.outputFormat ?? "png"}`}
+              title="下载图片"
+            >
+              <Download size={16} />
+            </a>
           </figure>
         ))}
       </div>
@@ -927,13 +930,12 @@ function ImagePreview({ image, onClose }: { image: PreviewImage | null; onClose:
         <button className="image-preview-close" type="button" title="关闭预览" onClick={onClose}>
           <X size={20} />
         </button>
-        <img src={image.src} alt={image.prompt} />
-        <footer>
-          <span>{image.prompt}</span>
-          <a href={image.src} download={`${image.id}.${image.extension ?? "png"}`} title="下载图片">
+        <div className="image-preview-media">
+          <img src={image.src} alt={image.prompt} />
+          <a className="image-download-button" href={image.src} download={`${image.id}.${image.extension ?? "png"}`} title="下载图片">
             <Download size={17} />
           </a>
-        </footer>
+        </div>
       </section>
     </div>
   );

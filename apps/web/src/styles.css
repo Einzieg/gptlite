@@ -856,6 +856,7 @@ button {
 }
 
 .generated-image-card {
+  position: relative;
   margin: 0;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -863,7 +864,7 @@ button {
   background: var(--surface);
 }
 
-.generated-image-card button {
+.generated-image-open {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -885,6 +886,13 @@ button {
   background: var(--surface-strong);
 }
 
+.generated-image-download {
+  position: absolute;
+  z-index: 1;
+  right: 10px;
+  bottom: 10px;
+}
+
 .image-placeholder {
   display: block;
   width: 100%;
@@ -893,29 +901,22 @@ button {
   background: var(--surface-strong);
 }
 
-.generated-image-card figcaption {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 30px;
-  align-items: center;
-  gap: 6px;
-  padding: 8px;
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.generated-image-card figcaption span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.generated-image-card a {
+.image-download-button {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: var(--radius-pill);
-  color: var(--text);
+  background: rgba(38, 38, 38, 0.38);
+  color: white;
+  backdrop-filter: blur(8px);
+  transition: background 0.16s ease, transform 0.16s ease;
+}
+
+.image-download-button:hover {
+  background: rgba(38, 38, 38, 0.56);
+  transform: translateY(-1px);
 }
 
 .image-placeholder-text {
@@ -934,40 +935,33 @@ button {
 
 .image-preview {
   position: relative;
-  display: grid;
-  gap: 10px;
+  display: block;
   max-width: min(94vw, 1040px);
   max-height: 94dvh;
+}
+
+.image-preview-media {
+  position: relative;
+  display: inline-block;
+  line-height: 0;
 }
 
 .image-preview img {
   display: block;
   max-width: 100%;
-  max-height: min(82dvh, 880px);
+  max-height: min(90dvh, 920px);
   object-fit: contain;
   border-radius: 8px;
   background: #0d0f0e;
 }
 
-.image-preview footer {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 38px;
-  align-items: center;
-  gap: 8px;
-  min-height: 42px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text);
+.image-preview .image-download-button {
+  position: absolute;
+  z-index: 1;
+  right: 12px;
+  bottom: 12px;
 }
 
-.image-preview footer span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.image-preview footer a,
 .image-preview-close {
   display: grid;
   place-items: center;
@@ -976,14 +970,9 @@ button {
   color: var(--text);
 }
 
-.image-preview footer a {
-  width: 38px;
-  height: 38px;
-  background: var(--surface-strong);
-}
-
 .image-preview-close {
   position: absolute;
+  z-index: 1;
   top: 10px;
   right: 10px;
   width: 38px;
