@@ -864,14 +864,27 @@ button {
 }
 
 .generated-image-card button {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 100%;
+  min-height: 118px;
   padding: 0;
+  overflow: hidden;
   border: 0;
-  background: transparent;
+  background: var(--surface-strong);
 }
 
-.generated-image-card img,
+.generated-image-card img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(72dvh, 680px);
+  object-fit: contain;
+  background: var(--surface-strong);
+}
+
 .image-placeholder {
   display: block;
   width: 100%;
