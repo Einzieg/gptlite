@@ -22,6 +22,7 @@ import {
   Send,
   Settings,
   Shield,
+  SlidersHorizontal,
   Sparkles,
   SquarePen,
   Trash2,
@@ -38,13 +39,21 @@ type EditingState = Pick<ChatMessage, "id" | "conversationId" | "content"> | nul
 interface ImageMessagePayload {
   type: "image_result";
   prompt: string;
-  images: Array<{ id: string; url: string | null; base64: string | null }>;
+  outputFormat?: string;
+  images: Array<{
+    id: string;
+    url: string | null;
+    base64: string | null;
+    mimeType?: string | null;
+    extension?: string | null;
+  }>;
 }
 
 interface PreviewImage {
   src: string;
   prompt: string;
   id: string;
+  extension?: string | null;
 }
 
 interface ReferenceImage {
@@ -52,6 +61,15 @@ interface ReferenceImage {
   name: string;
   type: string;
   data: string;
+}
+
+interface ImageParams {
+  size: string;
+  quality: "auto" | "low" | "medium" | "high";
+  output_format: "png" | "jpeg" | "webp";
+  output_compression: number | null;
+  moderation: "auto" | "low";
+  n: number;
 }
 
 interface StreamingState {
@@ -63,6 +81,14 @@ interface StreamingState {
 }
 
 const IMAGE_MESSAGE_PREFIX = "__gptlite_image__:";
+const DEFAULT_IMAGE_PARAMS: ImageParams = {
+  size: "auto",
+  quality: "auto",
+  output_format: "png",
+  output_compression: null,
+  moderation: "auto",
+  n: 1
+};
 
 const modeLabels: Record<ConversationMode, string> = {
   chat: "Chat",
@@ -185,6 +211,8 @@ function ChatShell({ user }: { user: User }) {
   const [streaming, setStreaming] = useState<StreamingState | null>(null);
   const [editing, setEditing] = useState<EditingState>(null);
   const [imageBusy, setImageBusy] = useState(false);
+  const [imageOptionsOpen, setImageOptionsOpen] = useState(false);
+  const [imageParams, setImageParams] = useState<ImageParams>(DEFAULT_IMAGE_PARAMS);
   const [referenceImages, setReferenceImages] = useState<ReferenceImage[]>([]);
   const [previewImage, setPreviewImage] = useState<PreviewImage | null>(null);
 
@@ -343,8 +371,12 @@ function ChatShell({ user }: { user: User }) {
         touchedConversationId = conversationId;
         const result = await api.generateImage({
           prompt: content,
-          size: "1024x1024",
-          n: 1,
+          size: imageParams.size,
+          n: imageParams.n,
+          quality: imageParams.quality,
+          output_format: imageParams.output_format,
+          output_compression: imageParams.output_format === "png" ? null : imageParams.output_compression,
+          moderation: imageParams.moderation,
           conversationId,
           referenceImages: referenceImages.map(({ name, type, data }) => ({ name, type, data }))
         });
@@ -392,6 +424,7 @@ function ChatShell({ user }: { user: User }) {
     setDraft("");
     setEditing(null);
     setMode("chat");
+    setImageOptionsOpen(false);
     setReferenceImages([]);
     setDrawerOpen(false);
   }
@@ -519,28 +552,50 @@ function ChatShell({ user }: { user: User }) {
         </div>
       ) : null}
 
-      {mode === "image" && referenceImages.length > 0 ? (
-        <div className="reference-strip">
-          {referenceImages.map((image) => (
-            <figure key={image.id}>
-              <img src={image.data} alt="" />
-              <button type="button" title="移除参考图" onClick={() => removeReferenceImage(image.id)}>
-                <X size={13} />
-              </button>
-            </figure>
-          ))}
+      {mode === "image" ? (
+        <div className="image-control-stack">
+          {imageOptionsOpen ? (
+            <ImageParamsPanel
+              params={imageParams}
+              onChange={(patch) => setImageParams((current) => ({ ...current, ...patch }))}
+              onClose={() => setImageOptionsOpen(false)}
+            />
+          ) : null}
+          {referenceImages.length > 0 ? (
+            <div className="reference-strip">
+              {referenceImages.map((image) => (
+                <figure key={image.id}>
+                  <img src={image.data} alt="" />
+                  <button type="button" title="移除参考图" onClick={() => removeReferenceImage(image.id)}>
+                    <X size={13} />
+                  </button>
+                </figure>
+              ))}
+            </div>
+          ) : null}
         </div>
       ) : null}
 
-      <form className="composer" onSubmit={submit}>
-        <button
-          className="composer-tool"
-          type="button"
-          title={mode === "image" ? "上传参考图" : "新聊天"}
-          onClick={() => (mode === "image" ? fileInputRef.current?.click() : startNewConversation())}
-        >
-          {mode === "image" ? <ImageIcon size={20} /> : <Plus size={21} />}
-        </button>
+      <form className={mode === "image" ? "composer image-composer" : "composer"} onSubmit={submit}>
+        {mode === "image" ? (
+          <>
+            <button
+              className={imageOptionsOpen ? "composer-tool active" : "composer-tool"}
+              type="button"
+              title="生图参数"
+              onClick={() => setImageOptionsOpen((open) => !open)}
+            >
+              <SlidersHorizontal size={20} />
+            </button>
+            <button className="composer-tool" type="button" title="上传参考图" onClick={() => fileInputRef.current?.click()}>
+              <ImageIcon size={20} />
+            </button>
+          </>
+        ) : (
+          <button className="composer-tool" type="button" title="新聊天" onClick={startNewConversation}>
+            <Plus size={21} />
+          </button>
+        )}
         <input
           ref={fileInputRef}
           className="file-input"
@@ -755,6 +810,110 @@ function ThinkingIndicator() {
   );
 }
 
+function ImageParamsPanel(props: {
+  params: ImageParams;
+  onChange: (patch: Partial<ImageParams>) => void;
+  onClose: () => void;
+}) {
+  const compressionValue = props.params.output_compression == null ? "" : String(props.params.output_compression);
+
+  function updateOutputFormat(value: ImageParams["output_format"]) {
+    props.onChange({
+      output_format: value,
+      output_compression: value === "png" ? null : props.params.output_compression
+    });
+  }
+
+  function updateCompression(value: string) {
+    if (!value.trim()) {
+      props.onChange({ output_compression: null });
+      return;
+    }
+    const nextValue = Number(value);
+    if (Number.isFinite(nextValue)) {
+      props.onChange({ output_compression: Math.min(Math.max(Math.round(nextValue), 0), 100) });
+    }
+  }
+
+  function updateCount(value: string) {
+    const nextValue = Number(value);
+    if (Number.isFinite(nextValue)) {
+      props.onChange({ n: Math.min(Math.max(Math.round(nextValue), 1), 4) });
+    }
+  }
+
+  return (
+    <section className="image-params-panel">
+      <header>
+        <span>生图参数</span>
+        <button type="button" title="关闭" onClick={props.onClose}>
+          <X size={15} />
+        </button>
+      </header>
+      <div className="image-params-grid">
+        <label>
+          <span>尺寸</span>
+          <input
+            value={props.params.size}
+            onChange={(event) => props.onChange({ size: event.target.value })}
+            onBlur={(event) => props.onChange({ size: normalizeImageSize(event.target.value) || "auto" })}
+            placeholder="auto"
+          />
+        </label>
+        <label>
+          <span>质量</span>
+          <select
+            value={props.params.quality}
+            onChange={(event) => props.onChange({ quality: event.target.value as ImageParams["quality"] })}
+          >
+            <option value="auto">auto</option>
+            <option value="low">low</option>
+            <option value="medium">medium</option>
+            <option value="high">high</option>
+          </select>
+        </label>
+        <label>
+          <span>格式</span>
+          <select
+            value={props.params.output_format}
+            onChange={(event) => updateOutputFormat(event.target.value as ImageParams["output_format"])}
+          >
+            <option value="png">PNG</option>
+            <option value="jpeg">JPEG</option>
+            <option value="webp">WebP</option>
+          </select>
+        </label>
+        <label>
+          <span>压缩</span>
+          <input
+            value={compressionValue}
+            onChange={(event) => updateCompression(event.target.value)}
+            type="number"
+            min={0}
+            max={100}
+            placeholder="0-100"
+            disabled={props.params.output_format === "png"}
+          />
+        </label>
+        <label>
+          <span>审核</span>
+          <select
+            value={props.params.moderation}
+            onChange={(event) => props.onChange({ moderation: event.target.value as ImageParams["moderation"] })}
+          >
+            <option value="auto">auto</option>
+            <option value="low">low</option>
+          </select>
+        </label>
+        <label>
+          <span>数量</span>
+          <input value={props.params.n} onChange={(event) => updateCount(event.target.value)} type="number" min={1} max={4} />
+        </label>
+      </div>
+    </section>
+  );
+}
+
 function ImageEmpty({ busy }: { busy: boolean }) {
   return (
     <div className="image-empty">
@@ -803,13 +962,20 @@ function ImageResult(props: {
             <button
               type="button"
               title="预览图片"
-              onClick={() => props.onPreview({ id: image.id, src: image.src, prompt: props.payload.prompt })}
+              onClick={() =>
+                props.onPreview({
+                  id: image.id,
+                  src: image.src,
+                  prompt: props.payload.prompt,
+                  extension: image.extension ?? props.payload.outputFormat ?? "png"
+                })
+              }
             >
               <img src={image.src} alt={props.payload.prompt} />
             </button>
             <figcaption>
               <span>{props.payload.prompt}</span>
-              <a href={image.src} download={`${image.id}.png`} title="下载图片">
+              <a href={image.src} download={`${image.id}.${image.extension ?? props.payload.outputFormat ?? "png"}`} title="下载图片">
                 <Download size={15} />
               </a>
             </figcaption>
@@ -834,7 +1000,7 @@ function ImagePreview({ image, onClose }: { image: PreviewImage | null; onClose:
         <img src={image.src} alt={image.prompt} />
         <footer>
           <span>{image.prompt}</span>
-          <a href={image.src} download={`${image.id}.png`} title="下载图片">
+          <a href={image.src} download={`${image.id}.${image.extension ?? "png"}`} title="下载图片">
             <Download size={17} />
           </a>
         </footer>
@@ -1113,11 +1279,14 @@ function parseImageMessage(content: string): ImageMessagePayload | null {
     return {
       type: "image_result",
       prompt: typeof payload.prompt === "string" ? payload.prompt : "",
+      outputFormat: typeof payload.outputFormat === "string" ? payload.outputFormat : undefined,
       images: payload.images
         .map((image) => ({
           id: typeof image?.id === "string" ? image.id : crypto.randomUUID(),
           url: typeof image?.url === "string" ? image.url : null,
-          base64: typeof image?.base64 === "string" ? image.base64 : null
+          base64: typeof image?.base64 === "string" ? image.base64 : null,
+          mimeType: typeof image?.mimeType === "string" ? image.mimeType : null,
+          extension: typeof image?.extension === "string" ? image.extension : null
         }))
         .filter((image) => image.url || image.base64)
     };
@@ -1126,8 +1295,28 @@ function parseImageMessage(content: string): ImageMessagePayload | null {
   }
 }
 
-function imageSource(image: { url: string | null; base64: string | null }) {
-  return image.url ?? (image.base64 ? `data:image/png;base64,${image.base64}` : "");
+function imageSource(image: { url: string | null; base64: string | null; mimeType?: string | null }) {
+  return image.url ?? (image.base64 ? `data:${image.mimeType ?? "image/png"};base64,${image.base64}` : "");
+}
+
+function normalizeImageSize(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "auto";
+  }
+
+  const match = trimmed.match(/^(\d+)\s*[xX×]\s*(\d+)$/);
+  if (!match) {
+    return trimmed;
+  }
+
+  const width = roundToMultiple(Number(match[1]), 16);
+  const height = roundToMultiple(Number(match[2]), 16);
+  return `${width}x${height}`;
+}
+
+function roundToMultiple(value: number, multiple: number) {
+  return Math.max(multiple, Math.round(value / multiple) * multiple);
 }
 
 function readReferenceImage(file: File) {

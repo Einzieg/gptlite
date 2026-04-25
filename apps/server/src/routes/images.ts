@@ -13,6 +13,9 @@ const IMAGE_CONTEXT_MESSAGE_LIMIT = 6;
 const IMAGE_CONTEXT_MESSAGE_CHARS = 700;
 const IMAGE_CONTEXT_TOTAL_CHARS = 3200;
 const IMAGE_MESSAGE_PREFIX = "__gptlite_image__:";
+const IMAGE_QUALITIES = new Set(["auto", "low", "medium", "high"]);
+const IMAGE_FORMATS = new Set(["png", "jpeg", "webp"]);
+const IMAGE_MODERATIONS = new Set(["auto", "low"]);
 
 export async function imageRoutes(app: FastifyInstance) {
   app.post("/api/images/generations", async (request, reply) => {
@@ -28,8 +31,12 @@ export async function imageRoutes(app: FastifyInstance) {
     }
 
     const model = env.DEFAULT_IMAGE_MODEL;
-    const size = stringBody(body.size, "1024x1024");
+    const size = normalizeImageSize(stringBody(body.size, "auto"));
     const n = Math.min(Math.max(Number(body.n ?? 1), 1), 4);
+    const quality = oneOf(body.quality, IMAGE_QUALITIES, "auto");
+    const outputFormat = oneOf(body.output_format, IMAGE_FORMATS, "png");
+    const moderation = oneOf(body.moderation, IMAGE_MODERATIONS, "auto");
+    const outputCompression = normalizeOutputCompression(body.output_compression, outputFormat);
     const timestamp = now();
     const conversation = ensureImageConversation({
       conversationId: typeof body.conversationId === "string" ? body.conversationId : "",
@@ -66,7 +73,17 @@ export async function imageRoutes(app: FastifyInstance) {
     };
     db.insert(messages).values(userMessage).run();
 
-    const results = await generateImage({ model, prompt: imagePrompt, size, n, referenceImages });
+    const results = await generateImage({
+      model,
+      prompt: imagePrompt,
+      size,
+      n,
+      quality,
+      outputFormat,
+      outputCompression,
+      moderation,
+      referenceImages
+    });
     const records = results.map((result) => ({
       id: crypto.randomUUID(),
       userId: user.id,
@@ -89,10 +106,13 @@ export async function imageRoutes(app: FastifyInstance) {
       role: "assistant",
       content: encodeImageMessage({
         prompt,
+        outputFormat,
         images: records.map((record) => ({
           id: record.id,
           url: record.url,
-          base64: record.base64
+          base64: record.base64,
+          mimeType: mimeTypeForFormat(outputFormat),
+          extension: outputFormat
         }))
       }),
       model,
@@ -199,7 +219,14 @@ function firstTitle(content: string) {
 
 function encodeImageMessage(payload: {
   prompt: string;
-  images: Array<{ id: string; url: string | null; base64: string | null }>;
+  outputFormat?: string;
+  images: Array<{
+    id: string;
+    url: string | null;
+    base64: string | null;
+    mimeType?: string;
+    extension?: string;
+  }>;
 }) {
   return `${IMAGE_MESSAGE_PREFIX}${JSON.stringify({ type: "image_result", ...payload })}`;
 }
@@ -272,6 +299,50 @@ function truncateContext(value: string) {
   return value.length > IMAGE_CONTEXT_MESSAGE_CHARS
     ? `${value.slice(0, IMAGE_CONTEXT_MESSAGE_CHARS - 1)}…`
     : value;
+}
+
+function oneOf(value: unknown, allowed: Set<string>, fallback: string) {
+  return typeof value === "string" && allowed.has(value) ? value : fallback;
+}
+
+function normalizeImageSize(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "auto";
+  }
+  const match = trimmed.match(/^(\d+)\s*[xX×]\s*(\d+)$/);
+  if (!match) {
+    return trimmed;
+  }
+  const width = roundToMultiple(Number(match[1]), 16);
+  const height = roundToMultiple(Number(match[2]), 16);
+  return `${width}x${height}`;
+}
+
+function roundToMultiple(value: number, multiple: number) {
+  return Math.max(multiple, Math.round(value / multiple) * multiple);
+}
+
+function normalizeOutputCompression(value: unknown, outputFormat: string) {
+  if (outputFormat === "png") {
+    return undefined;
+  }
+
+  const numberValue = Number(value);
+  if (!Number.isFinite(numberValue)) {
+    return undefined;
+  }
+  return Math.min(Math.max(Math.round(numberValue), 0), 100);
+}
+
+function mimeTypeForFormat(format: string) {
+  if (format === "jpeg") {
+    return "image/jpeg";
+  }
+  if (format === "webp") {
+    return "image/webp";
+  }
+  return "image/png";
 }
 
 function normalizeReferenceImages(value: unknown) {

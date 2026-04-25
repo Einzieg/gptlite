@@ -52,6 +52,10 @@ export const api = {
     prompt: string;
     size: string;
     n: number;
+    quality: string;
+    output_format: string;
+    output_compression?: number | null;
+    moderation: string;
     conversationId?: string | null;
     referenceImages?: Array<{ name: string; type: string; data: string }>;
   }) =>

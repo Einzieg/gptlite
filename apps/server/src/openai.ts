@@ -109,21 +109,36 @@ export async function generateImage(params: {
   prompt: string;
   size: string;
   n: number;
+  quality: string;
+  outputFormat: string;
+  outputCompression?: number;
+  moderation: string;
   referenceImages?: ReferenceImageInput[];
 }) {
   if (params.referenceImages?.length) {
     return editImage({ ...params, referenceImages: params.referenceImages });
   }
 
+  const body: Record<string, unknown> = {
+    model: params.model,
+    prompt: params.prompt,
+    size: params.size,
+    quality: params.quality,
+    output_format: params.outputFormat,
+    moderation: params.moderation
+  };
+
+  if (params.n > 1) {
+    body.n = params.n;
+  }
+  if (params.outputFormat !== "png" && params.outputCompression !== undefined) {
+    body.output_compression = params.outputCompression;
+  }
+
   const response = await fetch(`${env.OPENAI_BASE_URL}/images/generations`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({
-      model: params.model,
-      prompt: params.prompt,
-      size: params.size,
-      n: params.n
-    })
+    body: JSON.stringify(body)
   });
 
   if (!response.ok) {
@@ -148,6 +163,10 @@ async function editImage(params: {
   prompt: string;
   size: string;
   n: number;
+  quality: string;
+  outputFormat: string;
+  outputCompression?: number;
+  moderation: string;
   referenceImages: ReferenceImageInput[];
 }) {
   const formData = new FormData();
@@ -155,10 +174,17 @@ async function editImage(params: {
   formData.set("prompt", params.prompt);
   formData.set("size", params.size);
   formData.set("n", String(params.n));
+  formData.set("quality", params.quality);
+  formData.set("output_format", params.outputFormat);
+  formData.set("moderation", params.moderation);
+
+  if (params.outputFormat !== "png" && params.outputCompression !== undefined) {
+    formData.set("output_compression", String(params.outputCompression));
+  }
 
   params.referenceImages.forEach((image) => {
     const file = referenceImageToFile(image);
-    formData.append(params.referenceImages.length === 1 ? "image" : "image[]", file, file.name);
+    formData.append("image[]", file, file.name);
   });
 
   const response = await fetch(`${env.OPENAI_BASE_URL}/images/edits`, {

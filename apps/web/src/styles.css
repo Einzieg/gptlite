@@ -177,6 +177,15 @@ button {
   box-shadow: 0 18px 42px rgba(0, 0, 0, 0.13);
 }
 
+.composer.image-composer {
+  grid-template-columns: 42px 42px minmax(0, 1fr) 42px;
+}
+
+.composer-tool.active {
+  background: var(--text);
+  color: white;
+}
+
 .composer textarea {
   width: 100%;
   min-height: 40px;
@@ -811,16 +820,95 @@ button {
   font-size: 0.88rem;
 }
 
-.reference-strip {
+.image-control-stack {
   position: fixed;
   z-index: 35;
   left: 20px;
   right: 20px;
   bottom: calc(78px + env(safe-area-inset-bottom));
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+  margin: 0 auto;
+  pointer-events: none;
+}
+
+.image-params-panel,
+.reference-strip {
+  pointer-events: auto;
+}
+
+.image-params-panel {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.image-params-panel header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.image-params-panel header button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--surface-strong);
+  color: var(--text);
+}
+
+.image-params-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.image-params-grid label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.image-params-grid span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.image-params-grid input,
+.image-params-grid select {
+  width: 100%;
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.84rem;
+}
+
+.image-params-grid input:disabled {
+  background: var(--surface-strong);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.reference-strip {
   display: flex;
   gap: 8px;
-  max-width: 520px;
-  margin: 0 auto;
   padding: 8px;
   overflow-x: auto;
   border: 1px solid var(--border);
@@ -1112,6 +1200,15 @@ button {
 }
 
 @media (max-width: 560px) {
+  .image-control-stack {
+    left: 12px;
+    right: 12px;
+  }
+
+  .image-params-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-form {
     grid-template-columns: 1fr;
   }
