@@ -1026,77 +1026,116 @@ button {
   pointer-events: none;
 }
 
-.image-params-panel,
+.aspect-ratio-panel,
 .reference-strip {
   pointer-events: auto;
 }
 
-.image-params-panel {
+.aspect-ratio-panel {
   display: grid;
-  gap: 10px;
-  padding: 10px;
+  justify-self: start;
+  width: min(212px, calc(100vw - 34px));
+  gap: 6px;
+  padding: 14px 14px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--surface);
-  box-shadow: var(--shadow);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.14);
 }
 
-.image-params-panel header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  color: var(--text);
+.aspect-ratio-panel header {
+  padding: 0 2px 6px;
+  color: #7d7d7d;
   font-size: 0.92rem;
-  font-weight: 650;
+  line-height: 1.2;
+  white-space: nowrap;
 }
 
-.image-params-panel header button {
+.aspect-ratio-list {
   display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--surface-strong);
-  color: var(--text);
+  gap: 2px;
 }
 
-.image-params-grid {
+.aspect-ratio-list button {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 8px;
-}
-
-.image-params-grid label {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.image-params-grid span {
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.image-params-grid input,
-.image-params-grid select {
+  grid-template-columns: 18px auto minmax(0, 1fr) 18px;
+  align-items: center;
+  gap: 7px;
   width: 100%;
-  min-width: 0;
-  min-height: 34px;
-  padding: 0 8px;
-  border: 1px solid var(--border);
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
   border-radius: 8px;
-  outline: 0;
-  background: var(--surface);
+  background: transparent;
   color: var(--text);
-  font-size: 0.84rem;
+  text-align: left;
 }
 
-.image-params-grid input:disabled {
+.aspect-ratio-list button:hover {
   background: var(--surface-strong);
+}
+
+.ratio-label {
+  font-size: 0.94rem;
+  white-space: nowrap;
+}
+
+.ratio-value {
   color: var(--muted);
-  cursor: not-allowed;
+  font-size: 0.92rem;
+  white-space: nowrap;
+}
+
+.ratio-check {
+  justify-self: end;
+  color: var(--text);
+}
+
+.ratio-icon {
+  justify-self: center;
+  display: block;
+  width: 13px;
+  height: 13px;
+  border: 1.7px solid var(--text);
+  border-radius: 4px;
+}
+
+.ratio-auto {
+  position: relative;
+  width: 14px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.ratio-auto::after {
+  content: "";
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  bottom: 2px;
+  height: 1.5px;
+  border-radius: var(--radius-pill);
+  background: var(--text);
+}
+
+.ratio-3-4 {
+  width: 12px;
+  height: 16px;
+}
+
+.ratio-9-16 {
+  width: 10px;
+  height: 18px;
+}
+
+.ratio-4-3 {
+  width: 16px;
+  height: 12px;
+}
+
+.ratio-16-9 {
+  width: 18px;
+  height: 10px;
 }
 
 .reference-strip {
@@ -1396,10 +1435,6 @@ button {
   .image-control-stack {
     left: 12px;
     right: 12px;
-  }
-
-  .image-params-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .admin-form {

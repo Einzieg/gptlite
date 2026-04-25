@@ -87,6 +87,15 @@ const DEFAULT_IMAGE_PARAMS: ImageParams = {
   n: 1
 };
 
+const aspectRatioOptions = [
+  { value: "auto", label: "自动", ratio: "" },
+  { value: "1:1", label: "方形", ratio: "1:1" },
+  { value: "3:4", label: "竖版", ratio: "3:4" },
+  { value: "9:16", label: "故事", ratio: "9:16" },
+  { value: "4:3", label: "横屏", ratio: "4:3" },
+  { value: "16:9", label: "宽屏", ratio: "16:9" }
+] as const;
+
 const modeLabels: Record<ConversationMode, string> = {
   chat: "ChatGPT",
   thinking: "Thinking",
@@ -249,6 +258,8 @@ function ChatShell({ user }: { user: User }) {
     }
     return next;
   }, [activeConversationId, messages, streaming]);
+  const selectedAspectRatio =
+    aspectRatioOptions.find((option) => option.value === imageParams.size) ?? aspectRatioOptions[0];
 
   async function ensureConversation(initialText?: string) {
     if (activeConversationId) {
@@ -546,10 +557,12 @@ function ChatShell({ user }: { user: User }) {
       {mode === "image" ? (
         <div className="image-control-stack">
           {imageOptionsOpen ? (
-            <ImageParamsPanel
-              params={imageParams}
-              onChange={(patch) => setImageParams((current) => ({ ...current, ...patch }))}
-              onClose={() => setImageOptionsOpen(false)}
+            <AspectRatioPanel
+              value={imageParams.size}
+              onSelect={(size) => {
+                setImageParams((current) => ({ ...current, size }));
+                setImageOptionsOpen(false);
+              }}
             />
           ) : null}
           {referenceImages.length > 0 ? (
@@ -594,7 +607,7 @@ function ChatShell({ user }: { user: User }) {
               title="生图参数"
               onClick={() => setImageOptionsOpen((open) => !open)}
             >
-              <span>自动</span>
+              <span>{selectedAspectRatio.label}</span>
               <ChevronDown size={15} />
             </button>
           </>
@@ -806,105 +819,22 @@ function ThinkingIndicator() {
   );
 }
 
-function ImageParamsPanel(props: {
-  params: ImageParams;
-  onChange: (patch: Partial<ImageParams>) => void;
-  onClose: () => void;
+function AspectRatioPanel(props: {
+  value: string;
+  onSelect: (size: string) => void;
 }) {
-  const compressionValue = props.params.output_compression == null ? "" : String(props.params.output_compression);
-
-  function updateOutputFormat(value: ImageParams["output_format"]) {
-    props.onChange({
-      output_format: value,
-      output_compression: value === "png" ? null : props.params.output_compression
-    });
-  }
-
-  function updateCompression(value: string) {
-    if (!value.trim()) {
-      props.onChange({ output_compression: null });
-      return;
-    }
-    const nextValue = Number(value);
-    if (Number.isFinite(nextValue)) {
-      props.onChange({ output_compression: Math.min(Math.max(Math.round(nextValue), 0), 100) });
-    }
-  }
-
-  function updateCount(value: string) {
-    const nextValue = Number(value);
-    if (Number.isFinite(nextValue)) {
-      props.onChange({ n: Math.min(Math.max(Math.round(nextValue), 1), 4) });
-    }
-  }
-
   return (
-    <section className="image-params-panel">
-      <header>
-        <span>生图参数</span>
-        <button type="button" title="关闭" onClick={props.onClose}>
-          <X size={15} />
-        </button>
-      </header>
-      <div className="image-params-grid">
-        <label>
-          <span>尺寸</span>
-          <input
-            value={props.params.size}
-            onChange={(event) => props.onChange({ size: event.target.value })}
-            onBlur={(event) => props.onChange({ size: normalizeImageSize(event.target.value) || "auto" })}
-            placeholder="auto"
-          />
-        </label>
-        <label>
-          <span>质量</span>
-          <select
-            value={props.params.quality}
-            onChange={(event) => props.onChange({ quality: event.target.value as ImageParams["quality"] })}
-          >
-            <option value="auto">auto</option>
-            <option value="low">low</option>
-            <option value="medium">medium</option>
-            <option value="high">high</option>
-          </select>
-        </label>
-        <label>
-          <span>格式</span>
-          <select
-            value={props.params.output_format}
-            onChange={(event) => updateOutputFormat(event.target.value as ImageParams["output_format"])}
-          >
-            <option value="png">PNG</option>
-            <option value="jpeg">JPEG</option>
-            <option value="webp">WebP</option>
-          </select>
-        </label>
-        <label>
-          <span>压缩</span>
-          <input
-            value={compressionValue}
-            onChange={(event) => updateCompression(event.target.value)}
-            type="number"
-            min={0}
-            max={100}
-            placeholder="0-100"
-            disabled={props.params.output_format === "png"}
-          />
-        </label>
-        <label>
-          <span>审核</span>
-          <select
-            value={props.params.moderation}
-            onChange={(event) => props.onChange({ moderation: event.target.value as ImageParams["moderation"] })}
-          >
-            <option value="auto">auto</option>
-            <option value="low">low</option>
-          </select>
-        </label>
-        <label>
-          <span>数量</span>
-          <input value={props.params.n} onChange={(event) => updateCount(event.target.value)} type="number" min={1} max={4} />
-        </label>
+    <section className="aspect-ratio-panel" aria-label="Choose image aspect ratio">
+      <header>Choose image aspect ratio</header>
+      <div className="aspect-ratio-list">
+        {aspectRatioOptions.map((option) => (
+          <button key={option.value} type="button" onClick={() => props.onSelect(option.value)}>
+            <span className={`ratio-icon ratio-${option.value.replace(":", "-")}`} aria-hidden="true" />
+            <span className="ratio-label">{option.label}</span>
+            {option.ratio ? <span className="ratio-value">{option.ratio}</span> : null}
+            {props.value === option.value ? <Check className="ratio-check" size={17} /> : null}
+          </button>
+        ))}
       </div>
     </section>
   );
@@ -1322,26 +1252,6 @@ function parseImageMessage(content: string): ImageMessagePayload | null {
 
 function imageSource(image: { url: string | null; base64: string | null; mimeType?: string | null }) {
   return image.url ?? (image.base64 ? `data:${image.mimeType ?? "image/png"};base64,${image.base64}` : "");
-}
-
-function normalizeImageSize(value: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return "auto";
-  }
-
-  const match = trimmed.match(/^(\d+)\s*[xX×]\s*(\d+)$/);
-  if (!match) {
-    return trimmed;
-  }
-
-  const width = roundToMultiple(Number(match[1]), 16);
-  const height = roundToMultiple(Number(match[2]), 16);
-  return `${width}x${height}`;
-}
-
-function roundToMultiple(value: number, multiple: number) {
-  return Math.max(multiple, Math.round(value / multiple) * multiple);
 }
 
 function readReferenceImage(file: File) {
