@@ -19,6 +19,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 413) {
+      throw new Error("参考图过大，请压缩图片或减少参考图数量");
+    }
     const payload = await response.json().catch(() => ({}));
     throw new Error(payload.error ?? `Request failed: ${response.status}`);
   }

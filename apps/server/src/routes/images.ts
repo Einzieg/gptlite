@@ -11,6 +11,7 @@ import { generateImage } from "../openai.js";
 
 const MAX_REFERENCE_IMAGES = 4;
 const MAX_REFERENCE_IMAGE_BYTES = 12 * 1024 * 1024;
+const IMAGE_GENERATION_BODY_LIMIT_BYTES = 80 * 1024 * 1024;
 const IMAGE_CONTEXT_MESSAGE_LIMIT = 6;
 const IMAGE_CONTEXT_MESSAGE_CHARS = 700;
 const IMAGE_CONTEXT_TOTAL_CHARS = 3200;
@@ -20,7 +21,7 @@ const IMAGE_FORMATS = new Set(["png", "jpeg", "webp"]);
 const IMAGE_MODERATIONS = new Set(["auto", "low"]);
 
 export async function imageRoutes(app: FastifyInstance) {
-  app.post("/api/images/generations", async (request, reply) => {
+  app.post("/api/images/generations", { bodyLimit: IMAGE_GENERATION_BODY_LIMIT_BYTES }, async (request, reply) => {
     const user = await requireUser(request, reply);
     if (!user) {
       return;
