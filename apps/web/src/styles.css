@@ -964,26 +964,6 @@ button {
   box-shadow: var(--shadow);
 }
 
-.editing-strip {
-  position: fixed;
-  z-index: 35;
-  left: 20px;
-  right: 20px;
-  bottom: calc(78px + env(safe-area-inset-bottom));
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  box-shadow: var(--shadow);
-  color: var(--muted);
-  font-size: 0.88rem;
-}
-
 .image-control-stack {
   position: fixed;
   z-index: 35;
@@ -1152,20 +1132,6 @@ button {
 
 .file-input {
   display: none;
-}
-
-.editing-strip span {
-  flex: 1;
-}
-
-.editing-strip button {
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border: 0;
-  border-radius: var(--radius-pill);
-  background: var(--surface-strong);
 }
 
 .auth-screen {

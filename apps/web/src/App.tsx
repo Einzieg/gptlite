@@ -548,16 +548,6 @@ function ChatShell({ user }: { user: User }) {
         </button>
       ) : null}
 
-      {editing ? (
-        <div className="editing-strip">
-          <Pencil size={14} />
-          <span>编辑后重发</span>
-          <button type="button" onClick={() => setEditing(null)} title="取消编辑">
-            <X size={14} />
-          </button>
-        </div>
-      ) : null}
-
       {mode === "image" ? (
         <div className="image-control-stack">
           {imageOptionsOpen ? (
